@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "254285208525",
+    "firebase_url": "https://niv-gilboa-app-default-rtdb.firebaseio.com",
+    "project_id": "niv-gilboa-app",
+    "storage_bucket": "niv-gilboa-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:254285208525:android:ddcc4cffedf2ef7157c284",
+        "android_client_info": {
+          "package_name": "com.example.nivgilboaapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdLTLQQ-VYmEglowTVTkfrksg1OBA26HU"
+        },
+        {
+          "current_key": "AIzaSyBSCkn5Ur9kJLBdyl7U6jnbVmqyLZsrSE8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:254285208525:android:a2761437bfaf90a357c284",
+        "android_client_info": {
+          "package_name": "com.example.nivgilboaapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdLTLQQ-VYmEglowTVTkfrksg1OBA26HU"
+        },
+        {
+          "current_key": "AIzaSyBSCkn5Ur9kJLBdyl7U6jnbVmqyLZsrSE8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
