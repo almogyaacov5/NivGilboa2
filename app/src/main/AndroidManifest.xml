@@ -22,8 +22,6 @@
         <!-- Activities -->
         <activity android:name=".YouTubeSearchActivity" />
 
-        <!-- הוספתי את מסך הסינון כדי למנוע קריסה בלחיצה על כפתור הסינון -->
-        <activity android:name=".FilterActivity" android:exported="false" />
 
         <!-- Google Maps API Key -->
         <meta-data
@@ -34,12 +32,13 @@
         <activity
             android:name="com.example.nivgilboaapp.MainActivity"
             android:exported="true"
-            android:label=""> <!-- השינוי כאן: מוחק את הכותרת מהפס העליון במסך הזה בלבד -->
+            android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
 
         <activity
             android:name="com.example.nivgilboaapp.AddRestaurantActivity"
