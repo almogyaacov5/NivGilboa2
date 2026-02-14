@@ -62,10 +62,11 @@ public class RestaurantDetailActivity extends AppCompatActivity {
         Button btnFavorite = findViewById(R.id.btnFavorite);
         Button btnDelete = findViewById(R.id.btnDelete);
 
-        // YouTube / Video
+        // NEW:
+        Button btnEdit = findViewById(R.id.btnEdit);
+
         btnWatchVideo.setOnClickListener(v -> openVideoUrl());
 
-        // Navigation
         btnNavigate.setOnClickListener(v -> {
             String uri = String.format("google.navigation:q=%f,%f", restaurant.lat, restaurant.lng);
             try {
@@ -75,12 +76,28 @@ public class RestaurantDetailActivity extends AppCompatActivity {
             }
         });
 
-        // Favorite (דמו)
         btnFavorite.setOnClickListener(v ->
                 Toast.makeText(this, "נשמר כמועדף!", Toast.LENGTH_SHORT).show()
         );
 
-        // Delete for all users (Firebase)
+        // NEW: Edit
+        if (btnEdit != null) {
+            if (restaurant.id == null || restaurant.id.trim().isEmpty()) {
+                btnEdit.setEnabled(false);
+                btnEdit.setAlpha(0.5f);
+                btnEdit.setOnClickListener(v ->
+                        Toast.makeText(this, "לא ניתן לערוך מסעדה בלי מזהה Firebase", Toast.LENGTH_LONG).show()
+                );
+            } else {
+                btnEdit.setOnClickListener(v -> {
+                    Intent i = new Intent(this, AddRestaurantActivity.class);
+                    i.putExtra(AddRestaurantActivity.EXTRA_RESTAURANT, restaurant);
+                    startActivity(i);
+                });
+            }
+        }
+
+        // Delete
         if (restaurant.id == null || restaurant.id.trim().isEmpty()) {
             btnDelete.setEnabled(false);
             btnDelete.setAlpha(0.5f);
@@ -91,6 +108,7 @@ public class RestaurantDetailActivity extends AppCompatActivity {
             btnDelete.setOnClickListener(v -> confirmDelete());
         }
     }
+
 
     private void openVideoUrl() {
         String url = restaurant.videoUrl != null ? restaurant.videoUrl.trim() : "";

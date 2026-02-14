@@ -29,8 +29,6 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import com.example.nivgilboaapp.R;
-import com.example.nivgilboaapp.YouTubeSearchActivity;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -38,10 +36,16 @@ import java.util.Arrays;
 import java.util.List;
 
 public class AddRestaurantActivity extends AppCompatActivity implements OnMapReadyCallback {
+
     private static final int REQ_PICK_YOUTUBE = 2001;
+
+    // NEW: extras for edit mode
+    public static final String EXTRA_RESTAURANT = "extra_restaurant";
+
     private GoogleMap mMap;
     private double selectedLat = 32.0853;
     private double selectedLng = 34.7818;
+
     private PlacesClient placesClient;
     private AutocompleteSupportFragment autocompleteFragment;
 
@@ -55,6 +59,11 @@ public class AddRestaurantActivity extends AppCompatActivity implements OnMapRea
     // Views
     private TextInputEditText etName, etAddress, etCuisine, etRating, etPrice, etLat, etLng, etYouTubeUrl;
     private CheckBox cbKosher;
+    private Button btnSave;
+
+    // NEW: edit mode state
+    private boolean isEditMode = false;
+    private Restaurant editingRestaurant = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,7 +73,7 @@ public class AddRestaurantActivity extends AppCompatActivity implements OnMapRea
         // Firebase ref
         restaurantsRef = FirebaseDatabase.getInstance().getReference("restaurants");
 
-        // Initialize Places API
+        // Initialize Places API (כמו אצלך)
         Places.initialize(getApplicationContext(), "AIzaSyAabQU2qs7PTdWsUcEhN5gDJHbj1qHAv68");
         placesClient = Places.createClient(this);
 
@@ -73,6 +82,7 @@ public class AddRestaurantActivity extends AppCompatActivity implements OnMapRea
         loadRestaurants();
 
         initViews();
+        readEditExtrasAndPrefill();   // NEW
         setupAutocomplete();
         setupMap();
     }
@@ -90,17 +100,44 @@ public class AddRestaurantActivity extends AppCompatActivity implements OnMapRea
 
         updateCoordsDisplay();
 
-        Button btnSave = findViewById(R.id.btnSave);
+        btnSave = findViewById(R.id.btnSave);
         btnSave.setOnClickListener(v -> saveRestaurant());
 
         Button btnPickYouTube = findViewById(R.id.btnPickYouTube);
         btnPickYouTube.setOnClickListener(v -> {
-            String q = (etName != null && etName.getText()!=null) ? etName.getText().toString().trim() : "";
+            String q = (etName != null && etName.getText() != null) ? etName.getText().toString().trim() : "";
             Intent i = new Intent(this, YouTubeSearchActivity.class);
             i.putExtra("q", q);
             startActivityForResult(i, REQ_PICK_YOUTUBE);
         });
+    }
 
+    // NEW: if launched with Restaurant -> edit mode
+    private void readEditExtrasAndPrefill() {
+        Intent intent = getIntent();
+        if (intent == null) return;
+
+        Object extra = intent.getSerializableExtra(EXTRA_RESTAURANT);
+        if (!(extra instanceof Restaurant)) return;
+
+        editingRestaurant = (Restaurant) extra;
+        if (editingRestaurant.id == null || editingRestaurant.id.trim().isEmpty()) return;
+
+        isEditMode = true;
+
+        if (btnSave != null) btnSave.setText("💾 שמור שינויים");
+
+        if (etName != null) etName.setText(nullToEmpty(editingRestaurant.name));
+        if (etAddress != null) etAddress.setText(nullToEmpty(editingRestaurant.address));
+        if (etCuisine != null) etCuisine.setText(nullToEmpty(editingRestaurant.cuisine));
+        if (etYouTubeUrl != null) etYouTubeUrl.setText(nullToEmpty(editingRestaurant.videoUrl));
+        if (etRating != null) etRating.setText(String.valueOf(editingRestaurant.rating));
+        if (etPrice != null) etPrice.setText(nullToEmpty(editingRestaurant.priceLevel));
+        if (cbKosher != null) cbKosher.setChecked(editingRestaurant.kosher);
+
+        selectedLat = editingRestaurant.lat;
+        selectedLng = editingRestaurant.lng;
+        updateCoordsDisplay();
     }
 
     private void setupAutocomplete() {
@@ -165,8 +202,12 @@ public class AddRestaurantActivity extends AppCompatActivity implements OnMapRea
     public void onMapReady(@NonNull GoogleMap googleMap) {
         mMap = googleMap;
 
-        LatLng telAviv = new LatLng(32.0853, 34.7818);
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(telAviv, 10));
+        // אם עריכה: נתחיל על המיקום של המסעדה ונשים marker
+        LatLng start = new LatLng(selectedLat, selectedLng);
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(start, isEditMode ? 16 : 10));
+
+        mMap.clear();
+        mMap.addMarker(new MarkerOptions().position(start).title(isEditMode ? "📍 מיקום המסעדה" : "📍 מיקום התחלתי"));
 
         mMap.setOnMapClickListener(latLng -> {
             selectedLat = latLng.latitude;
@@ -207,7 +248,6 @@ public class AddRestaurantActivity extends AppCompatActivity implements OnMapRea
             return;
         }
 
-        // חדש: קישור יוטיוב (חייב להיות לפני יצירת האובייקט)
         String youtubeUrl = (etYouTubeUrl != null && etYouTubeUrl.getText() != null)
                 ? etYouTubeUrl.getText().toString().trim()
                 : "";
@@ -222,10 +262,29 @@ public class AddRestaurantActivity extends AppCompatActivity implements OnMapRea
                 cbKosher != null && cbKosher.isChecked(),
                 (etPrice != null && etPrice.getText() != null) ? etPrice.getText().toString() : "",
                 "",
-                youtubeUrl   // ← כאן הקישור
+                youtubeUrl
         );
 
-        // --- שמירה ל-Firebase (לכל המשתמשים) ---
+        if (isEditMode && editingRestaurant != null && editingRestaurant.id != null) {
+            // UPDATE existing
+            String key = editingRestaurant.id;
+            restaurant.id = key;
+
+            restaurantsRef.child(key)
+                    .setValue(restaurant)
+                    .addOnSuccessListener(unused -> {
+                        Toast.makeText(this, "✅ עודכן בהצלחה!", Toast.LENGTH_LONG).show();
+                        setResult(RESULT_OK);
+                        finish();
+                    })
+                    .addOnFailureListener(e ->
+                            Toast.makeText(this, "שגיאת Firebase: " + e.getMessage(), Toast.LENGTH_LONG).show()
+                    );
+
+            return;
+        }
+
+        // CREATE new
         String key = restaurantsRef.push().getKey();
         if (key == null) {
             Toast.makeText(this, "שגיאה: לא נוצר מזהה למסעדה", Toast.LENGTH_LONG).show();
@@ -249,7 +308,6 @@ public class AddRestaurantActivity extends AppCompatActivity implements OnMapRea
                 );
     }
 
-
     // --- Local (אופציונלי) ---
     private void loadRestaurants() {
         Gson gson = new Gson();
@@ -265,7 +323,6 @@ public class AddRestaurantActivity extends AppCompatActivity implements OnMapRea
         prefs.edit().putString("restaurants_list", json).apply();
     }
 
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -276,4 +333,7 @@ public class AddRestaurantActivity extends AppCompatActivity implements OnMapRea
         }
     }
 
+    private String nullToEmpty(String s) {
+        return s == null ? "" : s;
+    }
 }

@@ -13,66 +13,58 @@
 
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="240dp">
+            android:layout_height="163dp">
 
-<!--            <ImageView-->
-<!--                android:id="@+id/ivRestaurantImage"-->
-<!--                android:layout_width="match_parent"-->
-<!--                android:layout_height="match_parent"-->
-<!--                android:scaleType="centerCrop"-->
-<!--                android:src="@android:drawable/ic_menu_gallery"-->
-<!--                android:background="#E0E0E0"-->
-<!--                android:contentDescription="תמונת המסעדה" />-->
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="80dp"
-                android:layout_gravity="bottom"
+                android:layout_height="190dp"
+                android:layout_gravity="top"
                 android:alpha="0.6" />
         </FrameLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="571dp"
             android:orientation="vertical"
             android:padding="24dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
+                android:layout_marginBottom="8dp"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="8dp">
+                android:orientation="horizontal">
 
                 <TextView
                     android:id="@+id/tvRestaurantName"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="מסעדת דוד"
+                    android:text="מסעדת..."
+                    android:textColor="#212121"
                     android:textSize="26sp"
-                    android:textStyle="bold"
-                    android:textColor="#212121" />
+                    android:textStyle="bold" />
 
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="#FFF3E0"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="4dp"
+                    android:gravity="center"
                     android:orientation="horizontal"
-                    android:gravity="center">
+                    android:paddingStart="8dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="4dp">
 
                     <TextView
                         android:id="@+id/tvRating"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="9.2"
+                        android:textColor="#FF9800"
                         android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:textColor="#FF9800" />
+                        android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -85,8 +77,8 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="4dp">
+                android:layout_marginBottom="4dp"
+                android:orientation="horizontal">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -99,36 +91,36 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="תל אביב, דיזנגוף 123"
-                    android:textSize="16sp"
-                    android:textColor="#757575" />
+                    android:textColor="#757575"
+                    android:textSize="16sp" />
             </LinearLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="24dp">
+                android:layout_marginBottom="24dp"
+                android:orientation="horizontal">
 
                 <TextView
                     android:id="@+id/tvCuisine"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="ישראלית"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:textColor="#2196F3"
+                    android:layout_marginEnd="8dp"
                     android:background="#E3F2FD"
                     android:padding="6dp"
-                    android:layout_marginEnd="8dp" />
+                    android:text="ישראלית"
+                    android:textColor="#2196F3"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="כשר למהדרין"
-                    android:textSize="14sp"
-                    android:textColor="#4CAF50"
                     android:background="#E8F5E9"
-                    android:padding="6dp" />
+                    android:padding="6dp"
+                    android:text="כשר למהדרין"
+                    android:textColor="#4CAF50"
+                    android:textSize="14sp" />
 
                 <ImageView
                     android:id="@+id/ivKosher"
@@ -140,38 +132,38 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="#EEEEEE"
-                android:layout_marginBottom="24dp" />
+                android:layout_marginBottom="24dp"
+                android:background="#EEEEEE" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
                 android:text="דבר המבקר"
-                android:textSize="18sp"
-                android:textStyle="bold"
                 android:textColor="#212121"
-                android:layout_marginBottom="8dp" />
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tvReviewSummary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="מסעדה משפחתית מצוינת עם אוכל ביתי טעים במיוחד."
-                android:textSize="16sp"
+                android:layout_marginBottom="32dp"
                 android:lineSpacingExtra="6dp"
+                android:text="מסעדה משפחתית מצוינת עם אוכל ביתי טעים במיוחד."
                 android:textColor="#424242"
-                android:layout_marginBottom="32dp" />
+                android:textSize="16sp" />
 
             <Button
                 android:id="@+id/btnWatchVideo"
                 android:layout_width="match_parent"
                 android:layout_height="60dp"
                 android:layout_marginBottom="12dp"
+                android:backgroundTint="#009688"
                 android:text="צפה בביקורת המלאה 🎥"
+                android:textColor="@android:color/white"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:backgroundTint="#009688"
-                android:textColor="@android:color/white"
                 app:cornerRadius="12dp" />
 
             <LinearLayout
@@ -181,31 +173,31 @@
 
                 <Button
                     android:id="@+id/btnNavigate"
+                    style="@style/Widget.Material3.Button.TextButton"
                     android:layout_width="0dp"
-                    android:layout_weight="1"
                     android:layout_height="56dp"
                     android:layout_marginEnd="8dp"
+                    android:layout_weight="1"
+                    android:backgroundTint="#F5F5F5"
                     android:text="נווט למקום 🗺️"
                     android:textColor="#212121"
-                    android:backgroundTint="#F5F5F5"
-                    app:strokeColor="#BDBDBD"
-                    app:strokeWidth="1dp"
                     app:cornerRadius="12dp"
-                    style="@style/Widget.Material3.Button.TextButton" />
+                    app:strokeColor="#BDBDBD"
+                    app:strokeWidth="1dp" />
 
                 <Button
                     android:id="@+id/btnFavorite"
+                    style="@style/Widget.Material3.Button.TextButton"
                     android:layout_width="0dp"
-                    android:layout_weight="1"
                     android:layout_height="56dp"
                     android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:backgroundTint="#F5F5F5"
                     android:text="שמור️"
                     android:textColor="#212121"
-                    android:backgroundTint="#F5F5F5"
-                    app:strokeColor="#BDBDBD"
-                    app:strokeWidth="1dp"
                     app:cornerRadius="12dp"
-                    style="@style/Widget.Material3.Button.TextButton" />
+                    app:strokeColor="#BDBDBD"
+                    app:strokeWidth="1dp" />
             </LinearLayout>
 
             <!-- חדש: מחיקה -->
@@ -214,10 +206,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:layout_marginTop="12dp"
-                android:text="מחק מסעדה"
-                android:textStyle="bold"
                 android:backgroundTint="@android:color/holo_red_dark"
+                android:text="מחק מסעדה"
                 android:textColor="@android:color/white"
+                android:textStyle="bold"
                 app:cornerRadius="12dp" />
 
             <RatingBar
@@ -226,6 +218,16 @@
                 android:layout_height="wrap_content"
                 android:visibility="gone" />
 
+            <Button
+                android:id="@+id/btnEdit"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="12dp"
+                android:backgroundTint="#FFA000"
+                android:text="ערוך מסעדה"
+                android:textColor="@android:color/white"
+                android:textStyle="bold"
+                app:cornerRadius="12dp" />
 
 
         </LinearLayout>
