@@ -39,6 +39,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+
+
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
@@ -54,7 +56,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private final Map<String, Marker> markerById = new HashMap<>();
 
     // NEW: Adapter for search suggestions
-    private ArrayAdapter<String> searchAdapter;
+    private ArrayAdapter<SearchItem> searchAdapter;
 
     // --- Drag FAB state ---
     private boolean dragMode = false;
@@ -65,6 +67,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final String KEY_FAB_SET = "fab_set";
     private static final String KEY_FAB_X = "fab_x";
     private static final String KEY_FAB_Y = "fab_y";
+
+    private static class SearchItem {
+        final Restaurant restaurant;
+        final String label;
+
+        SearchItem(Restaurant restaurant, String label) {
+            this.restaurant = restaurant;
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label; // זה מה שיופיע ברשימת ההצעות
+        }
+    }
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,8 +99,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         View root = findViewById(R.id.root);
         FloatingActionButton fabAdd = findViewById(R.id.fabAdd);
 
+        // --- 1) FAB ---
         if (fabAdd != null) {
             final int safeMarginPx = dpToPx(16);
+
             fabAdd.setOnClickListener(v -> {
                 if (dragMode) return;
                 Intent i = new Intent(MainActivity.this, AddRestaurantActivity.class);
@@ -101,10 +121,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         dX = v.getX() - event.getRawX();
                         dY = v.getY() - event.getRawY();
                         return false;
+
                     case MotionEvent.ACTION_MOVE:
                         if (!dragMode) return false;
                         float newX = event.getRawX() + dX;
                         float newY = event.getRawY() + dY;
+
                         if (root != null) {
                             float minX = safeMarginPx;
                             float minY = safeMarginPx;
@@ -113,9 +135,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             newX = Math.max(minX, Math.min(newX, maxX));
                             newY = Math.max(minY, Math.min(newY, maxY));
                         }
+
                         v.setX(newX);
                         v.setY(newY);
                         return true;
+
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL:
                         if (!dragMode) return false;
@@ -131,9 +155,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         }
 
-        // --- NEW: AutoComplete Search ---
+        // --- 2) חיפוש (ריבוע שנפתח) ---
+        View btnOpenSearch = findViewById(R.id.btnOpenSearch);
+        View cardSearchContainer = findViewById(R.id.cardSearchContainer);
+        View btnCloseSearch = findViewById(R.id.btnCloseSearch);
         AutoCompleteTextView actvSearch = findViewById(R.id.actvSearch);
-        if (actvSearch != null) {
+
+        if (actvSearch != null && btnOpenSearch != null && cardSearchContainer != null && btnCloseSearch != null) {
+
             searchAdapter = new ArrayAdapter<>(
                     this,
                     android.R.layout.simple_dropdown_item_1line,
@@ -141,6 +170,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             );
             actvSearch.setAdapter(searchAdapter);
             actvSearch.setThreshold(1);
+
+            btnOpenSearch.setOnClickListener(v -> {
+                btnOpenSearch.setVisibility(View.GONE);
+                cardSearchContainer.setVisibility(View.VISIBLE);
+                actvSearch.requestFocus();
+
+                android.view.inputmethod.InputMethodManager imm =
+                        (android.view.inputmethod.InputMethodManager) getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+                if (imm != null) imm.showSoftInput(actvSearch, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+            });
+
+            btnCloseSearch.setOnClickListener(v -> {
+                actvSearch.setText("");
+                filterRestaurants("");
+
+                android.view.inputmethod.InputMethodManager imm =
+                        (android.view.inputmethod.InputMethodManager) getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+                if (imm != null) imm.hideSoftInputFromWindow(actvSearch.getWindowToken(), 0);
+
+                cardSearchContainer.setVisibility(View.GONE);
+                btnOpenSearch.setVisibility(View.VISIBLE);
+            });
 
             actvSearch.addTextChangedListener(new android.text.TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -150,14 +201,24 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 @Override public void afterTextChanged(android.text.Editable s) {}
             });
 
+            // בחירה מההצעות -> מעבר למסך המסעדה
             actvSearch.setOnItemClickListener((parent, view, position, id) -> {
-                String selected = (String) parent.getItemAtPosition(position);
-                actvSearch.setText(selected);
-                actvSearch.setSelection(selected.length());
-                filterRestaurants(selected);
+                SearchItem item = (SearchItem) parent.getItemAtPosition(position);
+                if (item == null || item.restaurant == null) return;
+
+                openRestaurantDetails(item.restaurant);
+
+                // אופציונלי: סגור מקלדת + חיפוש
+                android.view.inputmethod.InputMethodManager imm =
+                        (android.view.inputmethod.InputMethodManager) getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+                if (imm != null) imm.hideSoftInputFromWindow(actvSearch.getWindowToken(), 0);
+
+                cardSearchContainer.setVisibility(View.GONE);
+                btnOpenSearch.setVisibility(View.VISIBLE);
             });
         }
     }
+
 
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
@@ -220,14 +281,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void updateSearchSuggestions() {
         if (searchAdapter == null) return;
+
         searchAdapter.clear();
         for (Restaurant r : restaurants) {
-            if (r != null && r.name != null) {
-                searchAdapter.add(r.name);
+            if (r == null || r.name == null) continue;
+
+            // טקסט יפה להצעה (כדי להבדיל אם יש כפילויות בשם)
+            String label = r.name;
+            if (r.cuisine != null && !r.cuisine.trim().isEmpty()) {
+                label += " • " + r.cuisine;
             }
+            if (r.rating > 0) {
+                label += " • ⭐ " + r.rating;
+            }
+
+            searchAdapter.add(new SearchItem(r, label));
         }
         searchAdapter.notifyDataSetChanged();
     }
+
 
     private void filterRestaurants(String query) {
         if (mMap == null) return;
