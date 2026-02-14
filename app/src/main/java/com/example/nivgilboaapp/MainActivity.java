@@ -13,6 +13,8 @@ import android.os.Bundle;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -49,9 +51,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private ValueEventListener restaurantsListener;
 
     private final List<Restaurant> restaurants = new ArrayList<>();
-
-    // חשוב: נשמור markers לפי id של Firebase כדי למחוק/לעדכן בקלות
     private final Map<String, Marker> markerById = new HashMap<>();
+
+    // NEW: Adapter for search suggestions
+    private ArrayAdapter<String> searchAdapter;
 
     // --- Drag FAB state ---
     private boolean dragMode = false;
@@ -69,7 +72,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         setContentView(R.layout.activity_main);
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-
         restaurantsRef = FirebaseDatabase.getInstance().getReference("restaurants");
 
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -80,57 +82,43 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         FloatingActionButton fabAdd = findViewById(R.id.fabAdd);
 
         if (fabAdd != null) {
-
-            final int safeMarginPx = dpToPx(16); // שנה כאן מרווח מהקצוות אם בא לך
-
-            // קליק רגיל = הוספה
+            final int safeMarginPx = dpToPx(16);
             fabAdd.setOnClickListener(v -> {
                 if (dragMode) return;
                 Intent i = new Intent(MainActivity.this, AddRestaurantActivity.class);
                 startActivityForResult(i, ADD_REQUEST_CODE);
             });
 
-            // לחיצה ארוכה = מצב גרירה
             fabAdd.setOnLongClickListener(v -> {
                 dragMode = true;
                 v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
                 return true;
             });
 
-            // גרירה בפועל
             fabAdd.setOnTouchListener((v, event) -> {
                 switch (event.getActionMasked()) {
-
                     case MotionEvent.ACTION_DOWN:
-                        // נשמור offset תמיד, כדי שאם תהיה לחיצה ארוכה אחר כך נוכל לגרור חלק
                         dX = v.getX() - event.getRawX();
                         dY = v.getY() - event.getRawY();
-                        return false; // מאפשר ל-FAB להמשיך לטפל בקליק/לונג-פרס רגילים
-
+                        return false;
                     case MotionEvent.ACTION_MOVE:
                         if (!dragMode) return false;
-
                         float newX = event.getRawX() + dX;
                         float newY = event.getRawY() + dY;
-
                         if (root != null) {
                             float minX = safeMarginPx;
                             float minY = safeMarginPx;
                             float maxX = root.getWidth() - v.getWidth() - safeMarginPx;
                             float maxY = root.getHeight() - v.getHeight() - safeMarginPx;
-
                             newX = Math.max(minX, Math.min(newX, maxX));
                             newY = Math.max(minY, Math.min(newY, maxY));
                         }
-
                         v.setX(newX);
                         v.setY(newY);
                         return true;
-
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL:
                         if (!dragMode) return false;
-
                         dragMode = false;
                         saveFabPosition(v.getX(), v.getY());
                         return true;
@@ -138,21 +126,45 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 return false;
             });
 
-            // שחזור מיקום אחרי שהמסך נמדד
             if (root != null) {
                 root.post(() -> restoreFabPosition(fabAdd, root, safeMarginPx));
             }
+        }
+
+        // --- NEW: AutoComplete Search ---
+        AutoCompleteTextView actvSearch = findViewById(R.id.actvSearch);
+        if (actvSearch != null) {
+            searchAdapter = new ArrayAdapter<>(
+                    this,
+                    android.R.layout.simple_dropdown_item_1line,
+                    new ArrayList<>()
+            );
+            actvSearch.setAdapter(searchAdapter);
+            actvSearch.setThreshold(1);
+
+            actvSearch.addTextChangedListener(new android.text.TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    filterRestaurants(s.toString());
+                }
+                @Override public void afterTextChanged(android.text.Editable s) {}
+            });
+
+            actvSearch.setOnItemClickListener((parent, view, position, id) -> {
+                String selected = (String) parent.getItemAtPosition(position);
+                actvSearch.setText(selected);
+                actvSearch.setSelection(selected.length());
+                filterRestaurants(selected);
+            });
         }
     }
 
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         mMap = googleMap;
-
         mMap.getUiSettings().setZoomControlsEnabled(true);
         mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
 
-        // location
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
             mMap.setMyLocationEnabled(true);
@@ -165,7 +177,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             );
         }
 
-        // marker click -> details
         mMap.setOnMarkerClickListener(marker -> {
             Object tag = marker.getTag();
             if (tag instanceof Restaurant) {
@@ -175,62 +186,74 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             return false;
         });
 
-        // להתחיל להאזין ל-Firebase רק אחרי שהמפה מוכנה
         attachFirebaseListener();
     }
 
     private void attachFirebaseListener() {
         if (restaurantsListener != null) return;
-
         restaurantsListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 restaurants.clear();
-
                 for (DataSnapshot child : snapshot.getChildren()) {
                     Restaurant r = child.getValue(Restaurant.class);
                     if (r == null) continue;
-
-                    r.id = child.getKey(); // קריטי למחיקה
+                    r.id = child.getKey();
                     restaurants.add(r);
                 }
-
-                redrawMarkers(); // ← זה מה שמסיר סמנים שנמחקו
+                redrawMarkers();
             }
-
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(MainActivity.this,
-                        "Firebase error: " + error.getMessage(),
-                        Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this, "Firebase error: " + error.getMessage(), Toast.LENGTH_LONG).show();
             }
         };
-
         restaurantsRef.addValueEventListener(restaurantsListener);
     }
 
     private void redrawMarkers() {
-        if (mMap == null) return;
+        // NEW: Update autocomplete list first
+        updateSearchSuggestions();
+        // Render all (empty filter)
+        filterRestaurants("");
+    }
 
-        // 1) הסר את כל הסמנים הישנים (כדי שלא יישאר סמן של מסעדה שנמחקה)
+    private void updateSearchSuggestions() {
+        if (searchAdapter == null) return;
+        searchAdapter.clear();
+        for (Restaurant r : restaurants) {
+            if (r != null && r.name != null) {
+                searchAdapter.add(r.name);
+            }
+        }
+        searchAdapter.notifyDataSetChanged();
+    }
+
+    private void filterRestaurants(String query) {
+        if (mMap == null) return;
+        String q = (query == null) ? "" : query.trim().toLowerCase();
+
         for (Marker m : markerById.values()) {
             if (m != null) m.remove();
         }
         markerById.clear();
 
-        // 2) צייר מחדש רק לפי הרשימה הנוכחית מ-Firebase
         for (Restaurant r : restaurants) {
             if (r == null) continue;
+            boolean match = q.isEmpty() ||
+                    (r.name != null && r.name.toLowerCase().contains(q)) ||
+                    (r.cuisine != null && r.cuisine.toLowerCase().contains(q));
 
-            LatLng pos = new LatLng(r.lat, r.lng);
-            Marker marker = mMap.addMarker(new MarkerOptions()
-                    .position(pos)
-                    .title(r.name)
-                    .snippet("⭐ " + r.rating + " | " + r.cuisine));
-
-            if (marker != null) {
-                marker.setTag(r);
-                if (r.id != null) markerById.put(r.id, marker);
+            if (match) {
+                LatLng pos = new LatLng(r.lat, r.lng);
+                Marker marker = mMap.addMarker(new MarkerOptions()
+                        .position(pos)
+                        .title(r.name)
+                        .snippet("⭐ " + r.rating + " | " + r.cuisine));
+                if (marker != null) {
+                    marker.setTag(r);
+                    if (r.id != null) markerById.put(r.id, marker);
+                }
             }
         }
     }
@@ -244,7 +267,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void moveToCurrentLocationOrDefault() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) return;
-
         fusedLocationClient.getLastLocation().addOnSuccessListener(this, loc -> {
             if (mMap == null) return;
             if (loc != null) {
@@ -252,36 +274,27 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         new LatLng(loc.getLatitude(), loc.getLongitude()), 12));
             } else {
                 mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(
-                        new LatLng(32.0853, 34.7818), 10)); // תל אביב
+                        new LatLng(32.0853, 34.7818), 10));
             }
         });
     }
 
     private void saveFabPosition(float x, float y) {
         SharedPreferences sp = getSharedPreferences(PREF_UI, MODE_PRIVATE);
-        sp.edit()
-                .putBoolean(KEY_FAB_SET, true)
-                .putFloat(KEY_FAB_X, x)
-                .putFloat(KEY_FAB_Y, y)
-                .apply();
+        sp.edit().putBoolean(KEY_FAB_SET, true).putFloat(KEY_FAB_X, x).putFloat(KEY_FAB_Y, y).apply();
     }
 
     private void restoreFabPosition(FloatingActionButton fab, View root, int safeMarginPx) {
         SharedPreferences sp = getSharedPreferences(PREF_UI, MODE_PRIVATE);
         if (!sp.getBoolean(KEY_FAB_SET, false)) return;
-
         float x = sp.getFloat(KEY_FAB_X, fab.getX());
         float y = sp.getFloat(KEY_FAB_Y, fab.getY());
-
-        // clamp כדי לא לצאת מהמסך (במיוחד אחרי שינוי גודל/רוטציה)
         float minX = safeMarginPx;
         float minY = safeMarginPx;
         float maxX = root.getWidth() - fab.getWidth() - safeMarginPx;
         float maxY = root.getHeight() - fab.getHeight() - safeMarginPx;
-
         x = Math.max(minX, Math.min(x, maxX));
         y = Math.max(minY, Math.min(y, maxY));
-
         fab.setX(x);
         fab.setY(y);
     }
